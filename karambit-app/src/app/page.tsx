@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import WalletConnect from "../../components/WalletConnect";
 import APYTable from "../../components/APYTable";
@@ -13,7 +13,7 @@ export default function Home() {
       {/* Header */}
       <div className="flex items-center justify-between mb-12">
         <div>
-          <h1 className="text-4xl font-bold text-orange-400">⚔️ Karambit</h1>
+          <div class="flex items-center gap-3"><img src="/logo-64.png" alt="Karambit" class="w-10 h-10 rounded-full" /><h1 class="text-4xl font-bold text-orange-400">Karambit</h1></div>
           <p className="text-gray-400 mt-1">sBTC Yield Aggregator on Bitcoin L2</p>
         </div>
         <WalletConnect address={address} setAddress={setAddress} />
