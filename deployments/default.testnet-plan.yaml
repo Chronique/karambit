@@ -1,0 +1,53 @@
+---
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: strategy-bitflow
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 14970
+            path: "contracts\\strategy-bitflow.clar"
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: strategy-router
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 24920
+            path: "contracts\\strategy-router.clar"
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: strategy-stackingdao
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 14720
+            path: "contracts\\strategy-stackingdao.clar"
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: strategy-trait
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 3280
+            path: "contracts\\strategy-trait.clar"
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: strategy-zest
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 23710
+            path: "contracts\\strategy-zest.clar"
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: vault
+            expected-sender: ST3CM1955QMJ712DDV0C0F0KE205XQQT4CRZ3R3N2
+            cost: 59760
+            path: "contracts\\vault.clar"
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.2"

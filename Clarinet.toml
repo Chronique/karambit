@@ -1,0 +1,48 @@
+[project]
+name = 'karambit'
+description = ''
+authors = []
+telemetry = true
+cache_dir = '.\.cache'
+requirements = []
+[contracts.strategy-bitflow]
+path = 'contracts/strategy-bitflow.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.strategy-router]
+path = 'contracts/strategy-router.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.strategy-stackingdao]
+path = 'contracts/strategy-stackingdao.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.strategy-trait]
+path = 'contracts/strategy-trait.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.strategy-zest]
+path = 'contracts/strategy-zest.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.vault]
+path = 'contracts/vault.clar'
+clarity_version = 3
+epoch = 'latest'
+[repl.analysis]
+passes = ['check_checker']
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
