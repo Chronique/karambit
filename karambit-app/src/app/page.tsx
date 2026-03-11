@@ -10,19 +10,19 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white p-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-12">
         <div>
-          <div class="flex items-center gap-3"><img src="/logo-64.png" alt="Karambit" class="w-10 h-10 rounded-full" /><h1 class="text-4xl font-bold text-orange-400">Karambit</h1></div>
+          <div className="flex items-center gap-3">
+            <img src="/logo-64.png" alt="Karambit" className="w-10 h-10 rounded-full" />
+            <h1 className="text-4xl font-bold text-orange-400">Karambit</h1>
+          </div>
           <p className="text-gray-400 mt-1">sBTC Yield Aggregator on Bitcoin L2</p>
         </div>
         <WalletConnect address={address} setAddress={setAddress} />
       </div>
 
-      {/* APY Table */}
       <APYTable />
 
-      {/* Deposit & Position */}
       {address && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <DepositForm address={address} />
