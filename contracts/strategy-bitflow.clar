@@ -1,4 +1,4 @@
-;; strategy-bitflow.clar
+﻿;; strategy-bitflow.clar
 ;; Karambit - Strategy adapter untuk BitFlow DEX
 ;; BitFlow adalah DEX di Stacks - sBTC earn yield dari LP fees
 

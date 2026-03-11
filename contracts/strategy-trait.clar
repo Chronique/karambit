@@ -1,4 +1,4 @@
-;; strategy-trait.clar
+﻿;; strategy-trait.clar
 ;; Karambit - Interface standar untuk semua yield strategy
 
 (define-trait strategy-trait

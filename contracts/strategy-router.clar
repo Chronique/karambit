@@ -1,4 +1,4 @@
-;; strategy-router.clar
+﻿;; strategy-router.clar
 ;; Karambit - Router yang memilih strategy dengan APY tertinggi
 
 ;; ========================
@@ -13,10 +13,10 @@
 ;; DATA VARS
 ;; ========================
 
-;; Strategy aktif saat ini (0 = zest, 1 = bitflow, dst)
+;; Currently active strategy (0=zest, 1=bitflow, 2=stackingdao)
 (define-data-var active-strategy uint u0)
 
-;; APY tiap strategy dalam basis points
+;; APY per strategy in basis points
 (define-data-var apy-zest uint u700)
 (define-data-var apy-bitflow uint u1000)
 (define-data-var apy-stackingdao uint u800)
@@ -25,12 +25,12 @@
 ;; READ-ONLY FUNCTIONS
 ;; ========================
 
-;; Dapatkan strategy aktif saat ini
+;; Get current active strategy
 (define-read-only (get-active-strategy)
   (ok (var-get active-strategy))
 )
 
-;; Dapatkan APY semua strategy
+;; Get all strategy APYs
 (define-read-only (get-all-apys)
   (ok {
     zest: (var-get apy-zest),
@@ -39,7 +39,7 @@
   })
 )
 
-;; Hitung strategy mana yang APY-nya tertinggi
+;; Calculate which strategy has highest APY
 (define-read-only (get-best-strategy)
   (let (
     (z (var-get apy-zest))
@@ -60,7 +60,7 @@
 ;; ADMIN FUNCTIONS
 ;; ========================
 
-;; Update APY zest (dipanggil keeper bot)
+;; Called by keeper bot
 (define-public (update-apy-zest (new-apy uint))
   (begin
     (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
@@ -91,7 +91,7 @@
   )
 )
 
-;; Rebalance: pindah ke strategy dengan APY tertinggi
+;; Rebalance: switch to highest APY strategy
 (define-public (rebalance)
   (begin
     (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)

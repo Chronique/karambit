@@ -1,6 +1,6 @@
-;; vault.clar
+﻿;; vault.clar
 ;; sBTC Yield Aggregator - Main Vault Contract
-;; Menerima sBTC dari user, auto-route ke strategy dengan APY tertinggi
+;; Accepts sBTC from users, auto-routes to highest APY strategy
 
 ;; ========================
 ;; CONSTANTS
@@ -21,32 +21,32 @@
 ;; DATA VARS
 ;; ========================
 
-;; Total sBTC yang dikelola vault
+;; Total sBTC managed by vault
 (define-data-var total-assets uint u0)
 
-;; Total shares yang beredar
+;; Total shares outstanding
 (define-data-var total-shares uint u0)
 
-;; Apakah vault sedang di-pause
+;; Whether vault is paused
 (define-data-var is-paused bool false)
 
-;; Alamat treasury untuk terima fee
+;; Treasury address for fee collection
 (define-data-var treasury-address principal CONTRACT-OWNER)
 
-;; Strategy aktif saat ini (max 4 strategy)
+;; Currently active strategy (0=zest, 1=bitflow, 2=stackingdao)
 (define-data-var active-strategy-count uint u0)
 
 ;; ========================
 ;; DATA MAPS
 ;; ========================
 
-;; Jumlah shares yang dimiliki tiap user
+;; Share balance per user
 (define-map user-shares
   principal
   uint
 )
 
-;; Daftar strategy yang terdaftar
+;; Registered strategies
 (define-map strategies
   uint  ;; strategy-id
   {
@@ -61,22 +61,22 @@
 ;; PRIVATE FUNCTIONS
 ;; ========================
 
-;; Hitung jumlah shares untuk amount sBTC yang didepositkan
+;; Calculate shares to mint for deposited sBTC amount
 (define-private (calculate-shares (amount uint))
   (let (
     (current-total-assets (var-get total-assets))
     (current-total-shares (var-get total-shares))
   )
     (if (is-eq current-total-assets u0)
-      ;; Deposit pertama: 1 share = 1 sBTC (in satoshis)
+      ;; First deposit: 1 share = 1 sBTC (in satoshis)
       amount
-      ;; Deposit selanjutnya: shares proporsional
+      ;; Subsequent deposits: proportional shares
       (/ (* amount current-total-shares) current-total-assets)
     )
   )
 )
 
-;; Hitung jumlah sBTC untuk amount shares yang di-redeem
+;; Calculate sBTC amount for redeemed shares
 (define-private (calculate-assets (shares uint))
   (let (
     (current-total-assets (var-get total-assets))
@@ -89,7 +89,7 @@
   )
 )
 
-;; Check apakah caller adalah owner
+;; Check if caller is owner
 (define-private (is-owner)
   (is-eq tx-sender CONTRACT-OWNER)
 )
@@ -102,7 +102,7 @@
 ;; User memanggil ini untuk mulai earn yield
 (define-public (deposit (amount uint))
   (begin
-    ;; Validasi
+    ;; Validate
     (asserts! (not (var-get is-paused)) ERR-PAUSED)
     (asserts! (> amount u0) ERR-ZERO-AMOUNT)
 
@@ -132,7 +132,7 @@
 ;; User burn shares dan dapat sBTC kembali
 (define-public (withdraw (shares uint))
   (begin
-    ;; Validasi
+    ;; Validate
     (asserts! (not (var-get is-paused)) ERR-PAUSED)
     (asserts! (> shares u0) ERR-ZERO-AMOUNT)
 
