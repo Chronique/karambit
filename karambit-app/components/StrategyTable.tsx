@@ -46,9 +46,9 @@ function StrategyTable() {
     <div>
       {/* Last updated timestamp */}
       <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8, textAlign: "right" }}>
-        Updated: {new Date(dataUpdatedAt).toLocaleTimeString("id-ID")}
-        {" Â· "}
-        <span style={{ color: "#4ade80" }}>â— Live</span>
+        Updated: {new Date(dataUpdatedAt).toLocaleTimeString("en-US")}
+        {" ● "}
+        <span style={{ color: "#4ade80" }}> Live</span>
       </div>
 
       {/* Strategy table */}
