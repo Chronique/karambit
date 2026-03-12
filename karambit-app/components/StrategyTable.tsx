@@ -82,7 +82,7 @@ function StrategyTable() {
               }}
             >
               <td style={{ padding: "12px", fontWeight: 500, color: "#e2e8f0" }}>
-                {s.isTop && <span style={{ color: "#fbbf24", marginRight: 4 }}>â˜…</span>}
+                {s.isTop && <span style={{ color: "#fbbf24", marginRight: 4, fontSize: 10, fontWeight: 700 }}>BEST </span>}
                 {s.name}
               </td>
               <td style={{ padding: "12px", fontSize: 12, color: "#94a3b8" }}>{s.type}</td>
@@ -150,4 +150,6 @@ export { StrategyTable, queryClient };
 // PERINTAH INSTALL:
 // npm install @tanstack/react-query recharts
 // -------------------------------------------------------
+
+
 
