@@ -120,24 +120,22 @@ async function fetchZestAPY(): Promise<number | null> {
 
 async function fetchBitflowAPY(): Promise<number | null> {
   try {
-    // BitFlow pool data
     const res = await fetch(
-      "https://api.bitflow.finance/v1/pools",
+      "https://bitflow-sdk-api-gateway-7owjsmt8.uc.gateway.dev/ticker",
       { signal: AbortSignal.timeout(5000) }
     );
     if (!res.ok) return null;
     const data = await res.json();
-    // Find best sBTC pool
-    const sbtcPool = data?.pools
-      ?.filter(
-        (p: { token0: string; token1: string }) =>
-          p.token0?.toLowerCase().includes("sbtc") ||
-          p.token1?.toLowerCase().includes("sbtc")
+    // BitFlow returns array of ticker objects directly
+    const pools = Array.isArray(data) ? data : Object.values(data);
+    const sbtcPool = pools
+      .filter((p: any) =>
+        p.base_currency?.toLowerCase().includes("sbtc") ||
+        p.target_currency?.toLowerCase().includes("sbtc")
       )
-      .sort(
-        (a: { apy: number }, b: { apy: number }) => b.apy - a.apy
-      )[0];
-    return sbtcPool?.apy ? parseFloat(sbtcPool.apy.toFixed(2)) : null;
+      .sort((a: any, b: any) => (b.liquidity_in_usd ?? 0) - (a.liquidity_in_usd ?? 0))[0];
+    // BitFlow ticker doesn't return APY directly — return null, use fallback
+    return sbtcPool ? null : null;
   } catch {
     return null;
   }
