@@ -1,48 +1,35 @@
 [project]
-name = 'karambit'
-description = ''
+name = "karambit-contracts"
+description = ""
 authors = []
 telemetry = true
-cache_dir = '.\.cache'
-requirements = []
-[contracts.strategy-bitflow]
-path = 'contracts/strategy-bitflow.clar'
-clarity_version = 3
-epoch = 'latest'
+cache_dir = "./.cache"
 
-[contracts.strategy-router]
-path = 'contracts/strategy-router.clar'
-clarity_version = 3
-epoch = 'latest'
+[contracts.kbt-ststx]
+path = "contracts/kbt-ststx.clar"
+clarity_version = 2
+epoch = 2.5
 
-[contracts.strategy-stackingdao]
-path = 'contracts/strategy-stackingdao.clar'
-clarity_version = 3
-epoch = 'latest'
+[contracts.kbt-sy]
+path = "contracts/kbt-sy.clar"
+clarity_version = 2
+epoch = 2.5
 
-[contracts.strategy-trait]
-path = 'contracts/strategy-trait.clar'
-clarity_version = 3
-epoch = 'latest'
+[contracts.kbt-pt]
+path = "contracts/kbt-pt.clar"
+clarity_version = 2
+epoch = 2.5
 
-[contracts.strategy-zest]
-path = 'contracts/strategy-zest.clar'
-clarity_version = 3
-epoch = 'latest'
+[contracts.kbt-yt]
+path = "contracts/kbt-yt.clar"
+clarity_version = 2
+epoch = 2.5
 
-[contracts.vault]
-path = 'contracts/vault.clar'
-clarity_version = 3
-epoch = 'latest'
+[contracts.kbt-vault]
+path = "contracts/kbt-vault.clar"
+clarity_version = 2
+epoch = 2.5
+
 [repl.analysis]
-passes = ['check_checker']
-
-[repl.analysis.check_checker]
-strict = false
-trusted_sender = false
-trusted_caller = false
-callee_filter = false
-
-[repl.remote_data]
-enabled = false
-api_url = 'https://api.hiro.so'
+passes = ["check_checker"]
+check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }

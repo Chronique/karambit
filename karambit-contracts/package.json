@@ -1,5 +1,6 @@
+
 {
-  "name": "karambit-tests",
+  "name": "karambit-contracts-tests",
   "version": "1.0.0",
   "description": "Run unit tests on this project.",
   "type": "module",
@@ -13,10 +14,9 @@
   "license": "ISC",
   "dependencies": {
     "@hirosystems/clarinet-sdk": "^3.6.0",
-    "@stacks/transactions": "^7.3.1",
     "@types/node": "^24.4.0",
+    "@stacks/transactions": "^7.2.0",
     "chokidar-cli": "^3.0.0",
-    "stacks-clarity-audit": "^0.1.9",
     "vitest": "^3.2.4",
     "vitest-environment-clarinet": "^2.3.0"
   }

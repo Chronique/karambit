@@ -6,15 +6,19 @@ import APYTable from "../../components/APYTable";
 import DepositForm from "../../components/DepositForm";
 import UserPosition from "../../components/UserPosition";
 import { StrategyTable } from "../../components/StrategyTable";
+import YieldMintUI from "../../components/YieldMintUI"; // ✅ pakai relative path, bukan @/
 
 const queryClient = new QueryClient();
 
 export default function Home() {
   const [address, setAddress] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"strategies" | "yield">("strategies");
 
   return (
     <QueryClientProvider client={queryClient}>
       <main className="min-h-screen bg-black text-white p-8">
+
+        {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div>
             <div className="flex items-center gap-3">
@@ -26,20 +30,56 @@ export default function Home() {
           <WalletConnect address={address} setAddress={setAddress} />
         </div>
 
-        <StrategyTable />
+        {/* Tab Navigation */}
+        <div className="flex gap-1 bg-zinc-900 rounded-xl p-1 w-fit mb-8">
+          <button
+            onClick={() => setActiveTab("strategies")}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+              activeTab === "strategies"
+                ? "bg-orange-500 text-black"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Strategies
+          </button>
+          <button
+            onClick={() => setActiveTab("yield")}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+              activeTab === "yield"
+                ? "bg-orange-500 text-black"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Yield Tokenization ✨
+          </button>
+        </div>
 
-        {address && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <DepositForm address={address} />
-            <UserPosition address={address} />
+        {/* Tab Content */}
+        {activeTab === "strategies" && (
+          <>
+            <StrategyTable />
+
+            {address && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <DepositForm address={address} />
+                <UserPosition address={address} />
+              </div>
+            )}
+
+            {!address && (
+              <div className="text-center mt-16 text-gray-500">
+                Connect your wallet to deposit sBTC and start earning yield
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "yield" && (
+          <div className="max-w-lg">
+            <YieldMintUI />
           </div>
         )}
 
-        {!address && (
-          <div className="text-center mt-16 text-gray-500">
-            Connect your wallet to deposit sBTC and start earning yield
-          </div>
-        )}
       </main>
     </QueryClientProvider>
   );
