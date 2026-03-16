@@ -6,6 +6,8 @@ import {
   cvToValue,
   uintCV,
   principalCV,
+  makeContractCall,
+  broadcastTransaction,
   PostConditionMode,
   AnchorMode,
 } from "@stacks/transactions";
@@ -85,6 +87,37 @@ async function readContract(
   });
 }
 
+// Call contract via Leather wallet provider directly (no @stacks/connect)
+async function callContractViaLeather(
+  address: string,
+  contractName: string,
+  functionName: string,
+  functionArgs: any[]
+): Promise<string> {
+  const provider = (window as any).LeatherProvider
+    ?? (window as any).XverseProviders?.StacksProvider;
+
+  if (!provider) throw new Error("Wallet not found");
+
+  const txOptions = {
+    contractAddress: DEPLOYER,
+    contractName,
+    functionName,
+    functionArgs,
+    network: "testnet",
+    postConditionMode: "allow",
+    postConditions: [],
+    senderAddress: address,
+  };
+
+  const response = await provider.request("stx_callContract", txOptions);
+
+  if (response?.result?.txid) return response.result.txid;
+  if (response?.txid) return response.txid;
+
+  throw new Error("Transaction failed or cancelled");
+}
+
 // ============================================================
 // Main Hook
 // ============================================================
@@ -152,39 +185,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, []);
 
-  // ── Write helper - lazy import to avoid SSR ───────────────
-
-  async function callContract(
-    contractName: string,
-    functionName: string,
-    functionArgs: any[],
-    onDone?: () => void
-  ): Promise<string> {
-    // dynamic import keeps @stacks/connect out of SSR bundle
-    const { openContractCall } = await import("@stacks/connect");
-    return new Promise((resolve, reject) => {
-      openContractCall({
-        network: NETWORK,
-        anchorMode: AnchorMode.Any,
-        contractAddress: DEPLOYER,
-        contractName,
-        functionName,
-        functionArgs,
-        postConditionMode: PostConditionMode.Allow,
-        postConditions: [],
-        onFinish: (data: { txId: string }) => {
-          setLoading(false);
-          onDone?.();
-          resolve(data.txId);
-        },
-        onCancel: () => {
-          setLoading(false);
-          reject(new Error("User cancelled"));
-        },
-      });
-    });
-  }
-
   // ── Actions ────────────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
@@ -193,56 +193,64 @@ export function useYieldProtocol(walletAddress?: string | null) {
     setLoading(true);
     setError(null);
     try {
-      return await callContract(
-        CONTRACTS.vault, "mint-pt-yt",
-        [uintCV(Math.floor(syAmountFloat * PRECISION))],
-        () => setTimeout(() => fetchUserPosition(addr), 3000)
-      );
+      const txId = await callContractViaLeather(addr, CONTRACTS.vault, "mint-pt-yt", [
+        uintCV(Math.floor(syAmountFloat * PRECISION)),
+      ]);
+      setTimeout(() => fetchUserPosition(addr), 3000);
+      return txId;
     } catch (err: any) {
       setError(err.message);
-      setLoading(false);
       throw err;
+    } finally {
+      setLoading(false);
     }
   }, [fetchUserPosition]);
 
   const redeemPt = useCallback(async (ptAmountFloat: number): Promise<string> => {
+    const addr = addressRef.current;
+    if (!addr) throw new Error("Wallet not connected");
     if (!vaultInfo?.isMature) throw new Error("Vault not yet matured");
     setLoading(true);
     try {
-      return await callContract(
-        CONTRACTS.vault, "redeem-pt",
-        [uintCV(Math.floor(ptAmountFloat * PRECISION))]
-      );
+      return await callContractViaLeather(addr, CONTRACTS.vault, "redeem-pt", [
+        uintCV(Math.floor(ptAmountFloat * PRECISION)),
+      ]);
     } catch (err: any) {
       setError(err.message);
-      setLoading(false);
       throw err;
+    } finally {
+      setLoading(false);
     }
   }, [vaultInfo]);
 
   const redeemEarly = useCallback(async (amountFloat: number): Promise<string> => {
+    const addr = addressRef.current;
+    if (!addr) throw new Error("Wallet not connected");
     setLoading(true);
     try {
-      return await callContract(
-        CONTRACTS.vault, "redeem-early",
-        [uintCV(Math.floor(amountFloat * PRECISION))]
-      );
+      return await callContractViaLeather(addr, CONTRACTS.vault, "redeem-early", [
+        uintCV(Math.floor(amountFloat * PRECISION)),
+      ]);
     } catch (err: any) {
       setError(err.message);
-      setLoading(false);
       throw err;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   const claimYield = useCallback(async (): Promise<string> => {
+    const addr = addressRef.current;
+    if (!addr) throw new Error("Wallet not connected");
     if (!userPosition?.pendingYield) throw new Error("No yield to claim");
     setLoading(true);
     try {
-      return await callContract(CONTRACTS.vault, "claim-yield", []);
+      return await callContractViaLeather(addr, CONTRACTS.vault, "claim-yield", []);
     } catch (err: any) {
       setError(err.message);
-      setLoading(false);
       throw err;
+    } finally {
+      setLoading(false);
     }
   }, [userPosition]);
 
