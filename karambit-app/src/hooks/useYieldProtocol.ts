@@ -1,5 +1,5 @@
-// hooks/useYieldProtocol.ts
-import { useState, useEffect, useCallback } from "react";
+// src/hooks/useYieldProtocol.ts
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   fetchCallReadOnlyFunction,
   cvToValue,
@@ -40,7 +40,6 @@ const NETWORK = STACKS_TESTNET;
 const BLOCKS_PER_DAY = 144;
 const PRECISION = 100_000_000;
 
-// Contract names sesuai yang terdeploy di testnet
 const CONTRACTS = {
   vault:  "kbt-vault4",
   pt:     "kbt-pt4",
@@ -50,8 +49,25 @@ const CONTRACTS = {
 } as const;
 
 // ============================================================
-// Helper
+// Helper: extract number from CV value safely
 // ============================================================
+
+function cvToNumber(cv: any): number {
+  const raw = cvToValue(cv);
+  // CV values can be {value: "123", type: "uint"} or just "123" or 123
+  if (typeof raw === "object" && raw !== null && "value" in raw) {
+    return Number(raw.value);
+  }
+  return Number(raw);
+}
+
+function cvToBool(cv: any): boolean {
+  const raw = cvToValue(cv);
+  if (typeof raw === "object" && raw !== null && "value" in raw) {
+    return Boolean(raw.value);
+  }
+  return Boolean(raw);
+}
 
 async function readContract(
   contractName: string,
@@ -69,20 +85,6 @@ async function readContract(
   });
 }
 
-function getUserAddress(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("stacks-session");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed?.userData?.profile?.stxAddress?.testnet ?? null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 // ============================================================
 // Main Hook
 // ============================================================
@@ -92,6 +94,12 @@ export function useYieldProtocol(walletAddress?: string | null) {
   const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState<string | null>(null);
+
+  // useRef so callbacks always get latest address
+  const addressRef = useRef<string | null>(walletAddress ?? null);
+  useEffect(() => {
+    addressRef.current = walletAddress ?? null;
+  }, [walletAddress]);
 
   // ── Fetch vault info ───────────────────────────────────────
 
@@ -107,19 +115,19 @@ export function useYieldProtocol(walletAddress?: string | null) {
           readContract(CONTRACTS.vault, "blocks-until-maturity"),
         ]);
 
-      const blocksLeftNum = Number(cvToValue(blocksLeft));
+      const blocksLeftNum = cvToNumber(blocksLeft);
       setVaultInfo({
-        maturityBlock:       Number(cvToValue(matBlock)),
-        totalLocked:         Number(cvToValue(totalLocked)) / PRECISION,
-        totalYield:          Number(cvToValue(totalYield))  / PRECISION,
-        impliedApy:          Number(cvToValue(impliedApy))  / PRECISION,
-        isMature:            Boolean(cvToValue(isMature)),
+        maturityBlock:       cvToNumber(matBlock),
+        totalLocked:         cvToNumber(totalLocked) / PRECISION,
+        totalYield:          cvToNumber(totalYield)  / PRECISION,
+        impliedApy:          cvToNumber(impliedApy)  / PRECISION,
+        isMature:            cvToBool(isMature),
         blocksUntilMaturity: blocksLeftNum,
         estimatedDaysLeft:   Math.floor(blocksLeftNum / BLOCKS_PER_DAY),
       });
     } catch (err) {
       console.error("fetchVaultInfo:", err);
-      setError("Gagal load vault info");
+      setError("Failed to load vault info");
     }
   }, []);
 
@@ -135,10 +143,10 @@ export function useYieldProtocol(walletAddress?: string | null) {
         readContract(CONTRACTS.sy,  "get-balance",       [addr], address),
       ]);
       setUserPosition({
-        ptBalance:    Number(cvToValue(ptBal))        / PRECISION,
-        ytBalance:    Number(cvToValue(ytBal))        / PRECISION,
-        pendingYield: Number(cvToValue(pendingYield)) / PRECISION,
-        syBalance:    Number(cvToValue(syBal))        / PRECISION,
+        ptBalance:    cvToNumber(ptBal)        / PRECISION,
+        ytBalance:    cvToNumber(ytBal)        / PRECISION,
+        pendingYield: cvToNumber(pendingYield) / PRECISION,
+        syBalance:    cvToNumber(syBal)        / PRECISION,
       });
     } catch (err) {
       console.error("fetchUserPosition:", err);
@@ -171,7 +179,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
         },
         onCancel: () => {
           setLoading(false);
-          reject(new Error("User cancel"));
+          reject(new Error("User cancelled"));
         },
       });
     });
@@ -180,8 +188,8 @@ export function useYieldProtocol(walletAddress?: string | null) {
   // ── Mint PT + YT ───────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
-    const addr = walletAddress ?? getUserAddress();
-    if (!addr) throw new Error("Wallet tidak terkoneksi");
+    const addr = addressRef.current;
+    if (!addr) throw new Error("Wallet not connected");
     setLoading(true);
     setError(null);
     try {
@@ -200,7 +208,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
   // ── Redeem PT ──────────────────────────────────────────────
 
   const redeemPt = useCallback(async (ptAmountFloat: number): Promise<string> => {
-    if (!vaultInfo?.isMature) throw new Error("Vault belum mature");
+    if (!vaultInfo?.isMature) throw new Error("Vault not yet matured");
     setLoading(true);
     try {
       return await callContract(
@@ -233,7 +241,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
   // ── Claim yield ────────────────────────────────────────────
 
   const claimYield = useCallback(async (): Promise<string> => {
-    if (!userPosition?.pendingYield) throw new Error("Tidak ada yield");
+    if (!userPosition?.pendingYield) throw new Error("No yield to claim");
     setLoading(true);
     try {
       return await callContract(CONTRACTS.vault, "claim-yield", []);
@@ -244,14 +252,14 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, [userPosition]);
 
-  // ── Preview deposit ────────────────────────────────────────
+  // ── Preview ────────────────────────────────────────────────
 
   const previewDeposit = useCallback(async (stSTXAmount: number) => {
     const result = await readContract(
       CONTRACTS.sy, "preview-deposit",
       [uintCV(Math.floor(stSTXAmount * PRECISION))]
     );
-    return Number(cvToValue(result)) / PRECISION;
+    return cvToNumber(result) / PRECISION;
   }, []);
 
   // ── Effects ────────────────────────────────────────────────
@@ -263,10 +271,9 @@ export function useYieldProtocol(walletAddress?: string | null) {
   }, [fetchVaultInfo]);
 
   useEffect(() => {
-    const addr = walletAddress ?? getUserAddress();
-    if (!addr) return;
-    fetchUserPosition(addr);
-    const t = setInterval(() => fetchUserPosition(addr), 30_000);
+    if (!walletAddress) return;
+    fetchUserPosition(walletAddress);
+    const t = setInterval(() => fetchUserPosition(walletAddress), 30_000);
     return () => clearInterval(t);
   }, [fetchUserPosition, walletAddress]);
 
@@ -282,8 +289,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
     previewDeposit,
     refetch: () => {
       fetchVaultInfo();
-      const addr = walletAddress ?? getUserAddress();
-      if (addr) fetchUserPosition(addr);
+      if (addressRef.current) fetchUserPosition(addressRef.current);
     },
   };
 }
