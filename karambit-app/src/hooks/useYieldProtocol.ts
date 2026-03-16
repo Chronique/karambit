@@ -1,3 +1,4 @@
+"use client";
 // src/hooks/useYieldProtocol.ts
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   AnchorMode,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
-import { openContractCall } from "@stacks/connect";
 
 // ============================================================
 // Types
@@ -50,12 +50,11 @@ const CONTRACTS = {
 } as const;
 
 // ============================================================
-// Helper: extract number from CV value safely
+// Helpers
 // ============================================================
 
 function cvToNumber(cv: any): number {
   const raw = cvToValue(cv);
-  // CV values can be {value: "123", type: "uint"} or just "123" or 123
   if (typeof raw === "object" && raw !== null && "value" in raw) {
     return Number(raw.value);
   }
@@ -96,7 +95,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
-  // useRef so callbacks always get latest address
   const addressRef = useRef<string | null>(walletAddress ?? null);
   useEffect(() => {
     addressRef.current = walletAddress ?? null;
@@ -154,7 +152,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, []);
 
-  // ── Write helper ───────────────────────────────────────────
+  // ── Write helper - lazy import to avoid SSR ───────────────
 
   async function callContract(
     contractName: string,
@@ -162,6 +160,8 @@ export function useYieldProtocol(walletAddress?: string | null) {
     functionArgs: any[],
     onDone?: () => void
   ): Promise<string> {
+    // dynamic import keeps @stacks/connect out of SSR bundle
+    const { openContractCall } = await import("@stacks/connect");
     return new Promise((resolve, reject) => {
       openContractCall({
         network: NETWORK,
@@ -185,7 +185,7 @@ export function useYieldProtocol(walletAddress?: string | null) {
     });
   }
 
-  // ── Mint PT + YT ───────────────────────────────────────────
+  // ── Actions ────────────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
     const addr = addressRef.current;
@@ -205,8 +205,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, [fetchUserPosition]);
 
-  // ── Redeem PT ──────────────────────────────────────────────
-
   const redeemPt = useCallback(async (ptAmountFloat: number): Promise<string> => {
     if (!vaultInfo?.isMature) throw new Error("Vault not yet matured");
     setLoading(true);
@@ -222,8 +220,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, [vaultInfo]);
 
-  // ── Early exit ─────────────────────────────────────────────
-
   const redeemEarly = useCallback(async (amountFloat: number): Promise<string> => {
     setLoading(true);
     try {
@@ -238,8 +234,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
     }
   }, []);
 
-  // ── Claim yield ────────────────────────────────────────────
-
   const claimYield = useCallback(async (): Promise<string> => {
     if (!userPosition?.pendingYield) throw new Error("No yield to claim");
     setLoading(true);
@@ -251,8 +245,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
       throw err;
     }
   }, [userPosition]);
-
-  // ── Preview ────────────────────────────────────────────────
 
   const previewDeposit = useCallback(async (stSTXAmount: number) => {
     const result = await readContract(
