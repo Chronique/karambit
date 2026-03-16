@@ -280,9 +280,9 @@ function ClaimYieldTab({ onClaim, loading, pendingYield }: {
 
 type Tab = "mint" | "redeem" | "yield";
 
-export default function YieldMintUI() {
+export default function YieldMintUI({ address }: { address?: string | null }) {
   const { vaultInfo, userPosition, loading, error, mintPtYt, redeemPt, redeemEarly, claimYield } =
-    useYieldProtocol();
+    useYieldProtocol(address);
   const [activeTab, setActiveTab] = useState<Tab>("mint");
 
   if (!vaultInfo) {

@@ -76,7 +76,7 @@ export default function Home() {
 
         {activeTab === "yield" && (
           <div className="max-w-lg">
-            <YieldMintUI />
+            <YieldMintUI address={address} />
           </div>
         )}
 
