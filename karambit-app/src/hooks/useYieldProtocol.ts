@@ -9,6 +9,7 @@ import {
   AnchorMode,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
+import { openContractCall } from "@stacks/connect";
 
 // ============================================================
 // Types
@@ -161,7 +162,6 @@ export function useYieldProtocol(walletAddress?: string | null) {
     functionArgs: any[],
     onDone?: () => void
   ): Promise<string> {
-    const { openContractCall } = await import("@stacks/connect");
     return new Promise((resolve, reject) => {
       openContractCall({
         network: NETWORK,
