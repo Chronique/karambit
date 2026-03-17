@@ -282,7 +282,7 @@ type Tab = "mint" | "redeem" | "yield";
 
 export default function YieldMintUI({ address }: { address?: string | null }) {
   const { vaultInfo, userPosition, loading, error, mintPtYt, redeemPt, redeemEarly, claimYield } =
-    useYieldProtocol(address);
+    useYieldProtocol();
   const [activeTab, setActiveTab] = useState<Tab>("mint");
 
   if (!vaultInfo) {
