@@ -1,17 +1,16 @@
-"use client";
-// src/hooks/useYieldProtocol.ts
-import { useState, useEffect, useCallback, useRef } from "react";
+// hooks/useYieldProtocol.ts
+// Fixed for @stacks/connect v8 + @stacks/transactions v7
+
+import { useState, useEffect, useCallback } from "react";
 import {
   fetchCallReadOnlyFunction,
   cvToValue,
   uintCV,
   principalCV,
-  makeContractCall,
-  broadcastTransaction,
   PostConditionMode,
-  AnchorMode,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
+import { openContractCall } from "@stacks/connect"; // v8: import langsung
 
 // ============================================================
 // Types
@@ -55,22 +54,6 @@ const CONTRACTS = {
 // Helpers
 // ============================================================
 
-function cvToNumber(cv: any): number {
-  const raw = cvToValue(cv);
-  if (typeof raw === "object" && raw !== null && "value" in raw) {
-    return Number(raw.value);
-  }
-  return Number(raw);
-}
-
-function cvToBool(cv: any): boolean {
-  const raw = cvToValue(cv);
-  if (typeof raw === "object" && raw !== null && "value" in raw) {
-    return Boolean(raw.value);
-  }
-  return Boolean(raw);
-}
-
 async function readContract(
   contractName: string,
   functionName: string,
@@ -87,51 +70,29 @@ async function readContract(
   });
 }
 
-// Call contract via Leather wallet provider directly (no @stacks/connect)
-async function callContractViaLeather(
-  address: string,
-  contractName: string,
-  functionName: string,
-  functionArgs: any[]
-): Promise<string> {
-  const provider = (window as any).LeatherProvider
-    ?? (window as any).XverseProviders?.StacksProvider;
-
-  if (!provider) throw new Error("Wallet not found");
-
-  const txOptions = {
-    contractAddress: DEPLOYER,
-    contractName,
-    functionName,
-    functionArgs,
-    network: "testnet",
-    postConditionMode: "allow",
-    postConditions: [],
-    senderAddress: address,
-  };
-
-  const response = await provider.request("stx_callContract", txOptions);
-
-  if (response?.result?.txid) return response.result.txid;
-  if (response?.txid) return response.txid;
-
-  throw new Error("Transaction failed or cancelled");
+function getUserAddress(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem("stacks-session");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.userData?.profile?.stxAddress?.testnet ?? null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 // ============================================================
 // Main Hook
 // ============================================================
 
-export function useYieldProtocol(walletAddress?: string | null) {
+export function useYieldProtocol() {
   const [vaultInfo, setVaultInfo]       = useState<VaultInfo | null>(null);
   const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState<string | null>(null);
-
-  const addressRef = useRef<string | null>(walletAddress ?? null);
-  useEffect(() => {
-    addressRef.current = walletAddress ?? null;
-  }, [walletAddress]);
 
   // ── Fetch vault info ───────────────────────────────────────
 
@@ -147,19 +108,19 @@ export function useYieldProtocol(walletAddress?: string | null) {
           readContract(CONTRACTS.vault, "blocks-until-maturity"),
         ]);
 
-      const blocksLeftNum = cvToNumber(blocksLeft);
+      const blocksLeftNum = Number(cvToValue(blocksLeft));
       setVaultInfo({
-        maturityBlock:       cvToNumber(matBlock),
-        totalLocked:         cvToNumber(totalLocked) / PRECISION,
-        totalYield:          cvToNumber(totalYield)  / PRECISION,
-        impliedApy:          cvToNumber(impliedApy)  / PRECISION,
-        isMature:            cvToBool(isMature),
+        maturityBlock:       Number(cvToValue(matBlock)),
+        totalLocked:         Number(cvToValue(totalLocked)) / PRECISION,
+        totalYield:          Number(cvToValue(totalYield))  / PRECISION,
+        impliedApy:          Number(cvToValue(impliedApy))  / PRECISION,
+        isMature:            Boolean(cvToValue(isMature)),
         blocksUntilMaturity: blocksLeftNum,
         estimatedDaysLeft:   Math.floor(blocksLeftNum / BLOCKS_PER_DAY),
       });
     } catch (err) {
       console.error("fetchVaultInfo:", err);
-      setError("Failed to load vault info");
+      setError("Gagal load vault info");
     }
   }, []);
 
@@ -175,91 +136,122 @@ export function useYieldProtocol(walletAddress?: string | null) {
         readContract(CONTRACTS.sy,  "get-balance",       [addr], address),
       ]);
       setUserPosition({
-        ptBalance:    cvToNumber(ptBal)        / PRECISION,
-        ytBalance:    cvToNumber(ytBal)        / PRECISION,
-        pendingYield: cvToNumber(pendingYield) / PRECISION,
-        syBalance:    cvToNumber(syBal)        / PRECISION,
+        ptBalance:    Number(cvToValue(ptBal))        / PRECISION,
+        ytBalance:    Number(cvToValue(ytBal))        / PRECISION,
+        pendingYield: Number(cvToValue(pendingYield)) / PRECISION,
+        syBalance:    Number(cvToValue(syBal))        / PRECISION,
       });
     } catch (err) {
       console.error("fetchUserPosition:", err);
     }
   }, []);
 
-  // ── Actions ────────────────────────────────────────────────
+  // ── Write helper ───────────────────────────────────────────
+
+  async function callContract(
+    contractName: string,
+    functionName: string,
+    functionArgs: any[],
+    onDone?: () => void
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      openContractCall({
+        contractAddress: DEPLOYER,
+        contractName,
+        functionName,
+        functionArgs,
+        network: NETWORK,
+        postConditionMode: PostConditionMode.Allow,
+        postConditions: [],
+        // v8: tidak pakai AnchorMode
+        onFinish: (data) => {
+          setLoading(false);
+          onDone?.();
+          resolve(data.txId);
+        },
+        onCancel: () => {
+          setLoading(false);
+          reject(new Error("User cancel"));
+        },
+      });
+    });
+  }
+
+  // ── Mint PT + YT ───────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
-    const addr = addressRef.current;
-    if (!addr) throw new Error("Wallet not connected");
+    const addr = getUserAddress();
+    if (!addr) throw new Error("Wallet tidak terkoneksi");
     setLoading(true);
     setError(null);
     try {
-      const txId = await callContractViaLeather(addr, CONTRACTS.vault, "mint-pt-yt", [
-        uintCV(Math.floor(syAmountFloat * PRECISION)),
-      ]);
-      setTimeout(() => fetchUserPosition(addr), 3000);
-      return txId;
+      return await callContract(
+        CONTRACTS.vault, "mint-pt-yt",
+        [uintCV(Math.floor(syAmountFloat * PRECISION))],
+        () => setTimeout(() => fetchUserPosition(addr), 3000)
+      );
     } catch (err: any) {
       setError(err.message);
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   }, [fetchUserPosition]);
 
+  // ── Redeem PT ──────────────────────────────────────────────
+
   const redeemPt = useCallback(async (ptAmountFloat: number): Promise<string> => {
-    const addr = addressRef.current;
-    if (!addr) throw new Error("Wallet not connected");
-    if (!vaultInfo?.isMature) throw new Error("Vault not yet matured");
+    if (!vaultInfo?.isMature) throw new Error("Vault belum mature");
     setLoading(true);
     try {
-      return await callContractViaLeather(addr, CONTRACTS.vault, "redeem-pt", [
-        uintCV(Math.floor(ptAmountFloat * PRECISION)),
-      ]);
+      return await callContract(
+        CONTRACTS.vault, "redeem-pt",
+        [uintCV(Math.floor(ptAmountFloat * PRECISION))]
+      );
     } catch (err: any) {
       setError(err.message);
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   }, [vaultInfo]);
 
+  // ── Early exit ─────────────────────────────────────────────
+
   const redeemEarly = useCallback(async (amountFloat: number): Promise<string> => {
-    const addr = addressRef.current;
-    if (!addr) throw new Error("Wallet not connected");
     setLoading(true);
     try {
-      return await callContractViaLeather(addr, CONTRACTS.vault, "redeem-early", [
-        uintCV(Math.floor(amountFloat * PRECISION)),
-      ]);
+      return await callContract(
+        CONTRACTS.vault, "redeem-early",
+        [uintCV(Math.floor(amountFloat * PRECISION))]
+      );
     } catch (err: any) {
       setError(err.message);
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   }, []);
 
+  // ── Claim yield ────────────────────────────────────────────
+
   const claimYield = useCallback(async (): Promise<string> => {
-    const addr = addressRef.current;
-    if (!addr) throw new Error("Wallet not connected");
-    if (!userPosition?.pendingYield) throw new Error("No yield to claim");
+    if (!userPosition?.pendingYield) throw new Error("Tidak ada yield");
     setLoading(true);
     try {
-      return await callContractViaLeather(addr, CONTRACTS.vault, "claim-yield", []);
+      return await callContract(CONTRACTS.vault, "claim-yield", []);
     } catch (err: any) {
       setError(err.message);
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   }, [userPosition]);
+
+  // ── Preview deposit ────────────────────────────────────────
 
   const previewDeposit = useCallback(async (stSTXAmount: number) => {
     const result = await readContract(
       CONTRACTS.sy, "preview-deposit",
       [uintCV(Math.floor(stSTXAmount * PRECISION))]
     );
-    return cvToNumber(result) / PRECISION;
+    return Number(cvToValue(result)) / PRECISION;
   }, []);
 
   // ── Effects ────────────────────────────────────────────────
@@ -271,11 +263,12 @@ export function useYieldProtocol(walletAddress?: string | null) {
   }, [fetchVaultInfo]);
 
   useEffect(() => {
-    if (!walletAddress) return;
-    fetchUserPosition(walletAddress);
-    const t = setInterval(() => fetchUserPosition(walletAddress), 30_000);
+    const addr = getUserAddress();
+    if (!addr) return;
+    fetchUserPosition(addr);
+    const t = setInterval(() => fetchUserPosition(addr), 30_000);
     return () => clearInterval(t);
-  }, [fetchUserPosition, walletAddress]);
+  }, [fetchUserPosition]);
 
   return {
     vaultInfo,
@@ -289,7 +282,8 @@ export function useYieldProtocol(walletAddress?: string | null) {
     previewDeposit,
     refetch: () => {
       fetchVaultInfo();
-      if (addressRef.current) fetchUserPosition(addressRef.current);
+      const addr = getUserAddress();
+      if (addr) fetchUserPosition(addr);
     },
   };
 }
