@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   address: string | null;
@@ -8,6 +8,11 @@ interface Props {
 
 export default function WalletConnect({ address, setAddress }: Props) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("karambit-address");
+    if (saved) setAddress(saved);
+  }, []);
 
   const connect = async () => {
     setLoading(true);
@@ -28,7 +33,11 @@ export default function WalletConnect({ address, setAddress }: Props) {
         (a: any) => a.type === "p2pkh" || a.symbol === "STX"
       )?.address;
 
-      if (stxAddress) setAddress(stxAddress);
+      if (stxAddress) {
+      setAddress(stxAddress);
+      localStorage.setItem("karambit-address", stxAddress);
+      } 
+      
     } catch (e) {
       console.error(e);
     }
