@@ -87,7 +87,7 @@ function getUserAddress(): string | null {
 // Main Hook
 // ============================================================
 
-export function useYieldProtocol() {
+export function useYieldProtocol(address?: string | null) {
   const [vaultInfo, setVaultInfo]       = useState<VaultInfo | null>(null);
   const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
   const [loading, setLoading]           = useState(false);
@@ -179,7 +179,7 @@ export function useYieldProtocol() {
   // ── Mint PT + YT ───────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
-    const addr = getUserAddress();
+    const addr = address;
     if (!addr) throw new Error("Wallet tidak terkoneksi");
     setLoading(true);
     setError(null);
@@ -194,7 +194,7 @@ export function useYieldProtocol() {
       setLoading(false);
       throw err;
     }
-  }, [fetchUserPosition]);
+  }, [address, fetchUserPosition]);
 
   // ── Redeem PT ──────────────────────────────────────────────
 
@@ -262,7 +262,7 @@ export function useYieldProtocol() {
   }, [fetchVaultInfo]);
 
   useEffect(() => {
-    const addr = getUserAddress();
+    const addr = address;
     if (!addr) return;
     fetchUserPosition(addr);
     const t = setInterval(() => fetchUserPosition(addr), 30_000);
@@ -281,7 +281,7 @@ export function useYieldProtocol() {
     previewDeposit,
     refetch: () => {
       fetchVaultInfo();
-      const addr = getUserAddress();
+      const addr = address;
       if (addr) fetchUserPosition(addr);
     },
   };
