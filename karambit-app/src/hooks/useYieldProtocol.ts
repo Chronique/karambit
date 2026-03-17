@@ -10,7 +10,6 @@ import {
   PostConditionMode,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
-import { openContractCall } from "@stacks/connect"; // v8: import langsung
 
 // ============================================================
 // Types
@@ -149,33 +148,33 @@ export function useYieldProtocol() {
   // ── Write helper ───────────────────────────────────────────
 
   async function callContract(
-    contractName: string,
-    functionName: string,
-    functionArgs: any[],
-    onDone?: () => void
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      openContractCall({
-        contractAddress: DEPLOYER,
-        contractName,
-        functionName,
-        functionArgs,
-        network: NETWORK,
-        postConditionMode: PostConditionMode.Allow,
-        postConditions: [],
-        // v8: tidak pakai AnchorMode
-        onFinish: (data) => {
-          setLoading(false);
-          onDone?.();
-          resolve(data.txId);
-        },
-        onCancel: () => {
-          setLoading(false);
-          reject(new Error("User cancel"));
-        },
-      });
+  contractName: string,
+  functionName: string,
+  functionArgs: any[],
+  onDone?: () => void
+): Promise<string> {
+  const { openContractCall } = await import("@stacks/connect");
+  return new Promise((resolve, reject) => {
+    openContractCall({
+      contractAddress: DEPLOYER,
+      contractName,
+      functionName,
+      functionArgs,
+      network: NETWORK,
+      postConditionMode: PostConditionMode.Allow,
+      postConditions: [],
+      onFinish: (data) => {
+        setLoading(false);
+        onDone?.();
+        resolve(data.txId);
+      },
+      onCancel: () => {
+        setLoading(false);
+        reject(new Error("User cancel"));
+      },
     });
-  }
+  });
+}
 
   // ── Mint PT + YT ───────────────────────────────────────────
 
