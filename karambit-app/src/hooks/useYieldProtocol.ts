@@ -1,5 +1,7 @@
 // hooks/useYieldProtocol.ts
 // Fixed for @stacks/connect v8 + @stacks/transactions v7
+"use client";
+
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -10,6 +12,7 @@ import {
   PostConditionMode,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
+import { openContractCall } from "../lib/stacksConnect";
 
 // ============================================================
 // Types
@@ -153,7 +156,7 @@ export function useYieldProtocol(address?: string | null) {
   functionArgs: any[],
   onDone?: () => void
 ): Promise<string> {
-  const { openContractCall } = await import("@stacks/connect");
+ 
   return new Promise((resolve, reject) => {
     openContractCall({
       contractAddress: DEPLOYER,
