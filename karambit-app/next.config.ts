@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  transpilePackages: ["@stacks/connect", "@stacks/transactions", "@stacks/network"],
+const nextConfig: NextConfig = {
+  transpilePackages: ["@stacks/transactions", "@stacks/network"],
+  serverExternalPackages: ["@stacks/connect"],
 };
 
 export default nextConfig;
