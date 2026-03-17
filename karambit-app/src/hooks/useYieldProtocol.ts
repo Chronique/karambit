@@ -1,7 +1,6 @@
-// hooks/useYieldProtocol.ts
-// Fixed for @stacks/connect v8 + @stacks/transactions v7
 "use client";
-
+// hooks/useYieldProtocol.ts
+// @stacks/connect v8 API - pakai request('stx_callContract') bukan openContractCall
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -9,10 +8,9 @@ import {
   cvToValue,
   uintCV,
   principalCV,
-  PostConditionMode,
+  Cl,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
-import { openContractCall } from "../lib/stacksConnect";
 
 // ============================================================
 // Types
@@ -72,9 +70,16 @@ async function readContract(
   });
 }
 
-function getUserAddress(): string | null {
+// v8: getUserAddress pakai getLocalStorage dari @stacks/connect
+async function getUserAddress(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   try {
+    const { getLocalStorage } = await import("@stacks/connect");
+    const userData = getLocalStorage();
+    // v8 format: addresses.stx[0].address
+    const stxAddr = (userData as any)?.addresses?.stx?.[0]?.address;
+    if (stxAddr) return stxAddr;
+    // fallback ke format lama
     const stored = localStorage.getItem("stacks-session");
     if (stored) {
       const parsed = JSON.parse(stored);
@@ -128,14 +133,14 @@ export function useYieldProtocol(address?: string | null) {
 
   // ── Fetch user position ────────────────────────────────────
 
-  const fetchUserPosition = useCallback(async (address: string) => {
+  const fetchUserPosition = useCallback(async (addr: string) => {
     try {
-      const addr = principalCV(address);
+      const principal = principalCV(addr);
       const [ptBal, ytBal, pendingYield, syBal] = await Promise.all([
-        readContract(CONTRACTS.pt,  "get-balance",       [addr], address),
-        readContract(CONTRACTS.yt,  "get-balance",       [addr], address),
-        readContract(CONTRACTS.yt,  "get-pending-yield", [addr], address),
-        readContract(CONTRACTS.sy,  "get-balance",       [addr], address),
+        readContract(CONTRACTS.pt,  "get-balance",       [principal], addr),
+        readContract(CONTRACTS.yt,  "get-balance",       [principal], addr),
+        readContract(CONTRACTS.yt,  "get-pending-yield", [principal], addr),
+        readContract(CONTRACTS.sy,  "get-balance",       [principal], addr),
       ]);
       setUserPosition({
         ptBalance:    Number(cvToValue(ptBal))        / PRECISION,
@@ -148,48 +153,37 @@ export function useYieldProtocol(address?: string | null) {
     }
   }, []);
 
-  // ── Write helper ───────────────────────────────────────────
+  // ── Write helper: v8 pakai request('stx_callContract') ────
 
   async function callContract(
-  contractName: string,
-  functionName: string,
-  functionArgs: any[],
-  onDone?: () => void
-): Promise<string> {
- 
-  return new Promise((resolve, reject) => {
-    openContractCall({
-      contractAddress: DEPLOYER,
-      contractName,
-      functionName,
-      functionArgs,
-      network: NETWORK,
-      postConditionMode: PostConditionMode.Allow,
-      postConditions: [],
-      onFinish: (data) => {
-        setLoading(false);
-        onDone?.();
-        resolve(data.txId);
-      },
-      onCancel: () => {
-        setLoading(false);
-        reject(new Error("User cancel"));
-      },
-    });
-  });
-}
+    contractName: string,
+    functionName: string,
+    functionArgs: any[],
+    onDone?: () => void
+  ): Promise<string> {
+    const { request } = await import("@stacks/connect");
+    const response = await request("stx_callContract", {
+  contract: `${DEPLOYER}.${contractName}`,
+  functionName,
+  functionArgs,
+  network: "testnet",
+});
+    setLoading(false);
+    onDone?.();
+    return response.txid ?? "";
+  }
 
   // ── Mint PT + YT ───────────────────────────────────────────
 
   const mintPtYt = useCallback(async (syAmountFloat: number): Promise<string> => {
-    const addr = address;
+    const addr = address ?? await getUserAddress();
     if (!addr) throw new Error("Wallet tidak terkoneksi");
     setLoading(true);
     setError(null);
     try {
       return await callContract(
         CONTRACTS.vault, "mint-pt-yt",
-        [uintCV(Math.floor(syAmountFloat * PRECISION))],
+        [Cl.uint(Math.floor(syAmountFloat * PRECISION))],
         () => setTimeout(() => fetchUserPosition(addr), 3000)
       );
     } catch (err: any) {
@@ -207,7 +201,7 @@ export function useYieldProtocol(address?: string | null) {
     try {
       return await callContract(
         CONTRACTS.vault, "redeem-pt",
-        [uintCV(Math.floor(ptAmountFloat * PRECISION))]
+        [Cl.uint(Math.floor(ptAmountFloat * PRECISION))]
       );
     } catch (err: any) {
       setError(err.message);
@@ -223,7 +217,7 @@ export function useYieldProtocol(address?: string | null) {
     try {
       return await callContract(
         CONTRACTS.vault, "redeem-early",
-        [uintCV(Math.floor(amountFloat * PRECISION))]
+        [Cl.uint(Math.floor(amountFloat * PRECISION))]
       );
     } catch (err: any) {
       setError(err.message);
@@ -265,12 +259,11 @@ export function useYieldProtocol(address?: string | null) {
   }, [fetchVaultInfo]);
 
   useEffect(() => {
-    const addr = address;
-    if (!addr) return;
-    fetchUserPosition(addr);
-    const t = setInterval(() => fetchUserPosition(addr), 30_000);
+    if (!address) return;
+    fetchUserPosition(address);
+    const t = setInterval(() => fetchUserPosition(address), 30_000);
     return () => clearInterval(t);
-  }, [fetchUserPosition]);
+  }, [address, fetchUserPosition]);
 
   return {
     vaultInfo,
@@ -284,8 +277,7 @@ export function useYieldProtocol(address?: string | null) {
     previewDeposit,
     refetch: () => {
       fetchVaultInfo();
-      const addr = address;
-      if (addr) fetchUserPosition(addr);
+      if (address) fetchUserPosition(address);
     },
   };
 }
