@@ -8,7 +8,6 @@ import {
   cvToValue,
   uintCV,
   principalCV,
-  Cl,
 } from "@stacks/transactions";
 import { STACKS_TESTNET } from "@stacks/network";
 
@@ -183,7 +182,7 @@ export function useYieldProtocol(address?: string | null) {
     try {
       return await callContract(
         CONTRACTS.vault, "mint-pt-yt",
-        [Cl.uint(Math.floor(syAmountFloat * PRECISION))],
+        [uintCV(Math.floor(syAmountFloat * PRECISION))],
         () => setTimeout(() => fetchUserPosition(addr), 3000)
       );
     } catch (err: any) {
@@ -201,7 +200,7 @@ export function useYieldProtocol(address?: string | null) {
     try {
       return await callContract(
         CONTRACTS.vault, "redeem-pt",
-        [Cl.uint(Math.floor(ptAmountFloat * PRECISION))]
+        [uintCV(Math.floor(ptAmountFloat * PRECISION))]
       );
     } catch (err: any) {
       setError(err.message);
@@ -217,7 +216,7 @@ export function useYieldProtocol(address?: string | null) {
     try {
       return await callContract(
         CONTRACTS.vault, "redeem-early",
-        [Cl.uint(Math.floor(amountFloat * PRECISION))]
+        [uintCV(Math.floor(amountFloat * PRECISION))]
       );
     } catch (err: any) {
       setError(err.message);
