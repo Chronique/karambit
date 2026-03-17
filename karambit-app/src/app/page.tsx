@@ -1,27 +1,43 @@
 ﻿"use client";
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import WalletConnect from "../../components/WalletConnect";
 import DepositForm from "../../components/DepositForm";
 import UserPosition from "../../components/UserPosition";
 import { StrategyTable } from "../../components/StrategyTable";
 
-// ssr: false agar @stacks/connect tidak diload saat server-side render
 const YieldMintUI = dynamic(() => import("../../components/YieldMintUI"), {
   ssr: false,
-  loading: () => (
+  loading: () => <Spinner />,
+});
+
+const WrapSyUI = dynamic(() => import("../../components/WrapSyUI"), {
+  ssr: false,
+  loading: () => <Spinner />,
+});
+
+function Spinner() {
+  return (
     <div className="flex items-center justify-center h-48">
       <div className="animate-spin w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full" />
     </div>
-  ),
-});
+  );
+}
 
 const queryClient = new QueryClient();
 
+type Tab = "strategies" | "wrap" | "yield";
+
 export default function Home() {
   const [address, setAddress] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"strategies" | "yield">("strategies");
+  const [activeTab, setActiveTab] = useState<Tab>("strategies");
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "strategies", label: "Strategies" },
+    { id: "wrap",       label: "Wrap ↕" },
+    { id: "yield",      label: "Yield Tokenization ✨" },
+  ];
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -41,26 +57,19 @@ export default function Home() {
 
         {/* Tab Navigation */}
         <div className="flex gap-1 bg-zinc-900 rounded-xl p-1 w-fit mb-8">
-          <button
-            onClick={() => setActiveTab("strategies")}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === "strategies"
-                ? "bg-orange-500 text-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Strategies
-          </button>
-          <button
-            onClick={() => setActiveTab("yield")}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === "yield"
-                ? "bg-orange-500 text-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Yield Tokenization ✨
-          </button>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+                activeTab === tab.id
+                  ? "bg-orange-500 text-black"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Tab Content */}
@@ -79,6 +88,12 @@ export default function Home() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === "wrap" && (
+          <div className="max-w-lg">
+            <WrapSyUI address={address} />
+          </div>
         )}
 
         {activeTab === "yield" && (

@@ -7,6 +7,8 @@ const nextConfig = {
       fs: false,
       net: false,
       tls: false,
+      pino: false,
+      "pino-pretty": false,
     };
     return config;
   },
